@@ -109,7 +109,8 @@ export const useStore = create<AppState>((set) => ({
   },
   
   addMessage: (message) => {
-    const id = Date.now().toString();
+    // Ensure unique IDs even when messages are added rapidly
+    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newMessage: Message = {
       ...message,
       id,
@@ -210,13 +211,17 @@ export const useStore = create<AppState>((set) => ({
       const conversations = state.conversations.map((conv) => {
         if (conv.id === state.currentConversationId) {
           const messageIndex = conv.messages.findIndex(m => m.id === fromMessageId);
-          if (messageIndex === -1) return conv;
+          if (messageIndex === -1) {
+            console.error('Message not found for branching:', fromMessageId);
+            return conv;
+          }
           
           // Save main messages if this is the first branch
           const mainMessages = conv.mainMessages || conv.messages;
           
           // Create a new branch with messages up to and including the assistant's response after the branch point
           const branchId = `branch-${Date.now()}`;
+          
           // Include the message after the user message (which should be the assistant's response)
           const endIndex = messageIndex + 2; // Include user message + assistant response
           const branchMessages = conv.messages.slice(0, Math.min(endIndex, conv.messages.length)).map(m => ({ ...m }));
@@ -240,13 +245,26 @@ export const useStore = create<AppState>((set) => ({
           
           const branches = [...(conv.branches || []), newBranch];
           
-          return {
+          console.log('Creating branch:', branchId, 'with', branchMessages.length, 'messages');
+          console.log('Setting currentBranchId to:', branchId);
+          console.log('Branch messages:', branchMessages.map(m => ({ id: m.id, role: m.role, content: m.content.substring(0, 30) })));
+          
+          const updatedConv = {
             ...conv,
             mainMessages, // Store original timeline
             branches,
             currentBranchId: branchId,
             messages: branchMessages
           };
+          
+          console.log('Updated conversation:', {
+            id: updatedConv.id,
+            currentBranchId: updatedConv.currentBranchId,
+            branchCount: updatedConv.branches.length,
+            messageCount: updatedConv.messages.length
+          });
+          
+          return updatedConv;
         }
         return conv;
       });

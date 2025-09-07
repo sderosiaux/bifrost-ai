@@ -82,14 +82,33 @@ export const Message = memo(function Message({ message, onBranch, isLatestAssist
                 <button
                   onClick={() => {
                     // Find the user message that preceded this assistant message
-                    const messages = useStore.getState().conversations
-                      .find(c => c.id === useStore.getState().currentConversationId)
-                      ?.messages.filter(m => m.role !== 'system');
+                    const state = useStore.getState();
+                    const conversation = state.conversations.find(c => c.id === state.currentConversationId);
                     
-                    if (messages) {
-                      const messageIndex = messages.findIndex(m => m.id === message.id);
-                      if (messageIndex > 0 && messages[messageIndex - 1].role === 'user') {
-                        onBranch(messages[messageIndex - 1].id);
+                    if (conversation) {
+                      const allMessages = conversation.messages;
+                      const messageIndex = allMessages.findIndex(m => m.id === message.id);
+                      
+                      console.log('Fork button clicked for assistant message:', message.id, 'at index:', messageIndex);
+                      console.log('Total messages:', allMessages.length);
+                      console.log('Messages:', allMessages.map(m => ({ id: m.id, role: m.role })));
+                      
+                      // Find the preceding user message (skip system messages)
+                      let foundUserMessage = false;
+                      for (let i = messageIndex - 1; i >= 0; i--) {
+                        console.log(`Checking message at index ${i}: role=${allMessages[i].role}`);
+                        if (allMessages[i].role === 'user') {
+                          console.log('Found preceding user message:', allMessages[i].id, 'at index:', i);
+                          onBranch(allMessages[i].id);
+                          foundUserMessage = true;
+                          break;
+                        }
+                      }
+                      
+                      if (!foundUserMessage) {
+                        console.error('No user message found before assistant message');
+                        // If this is the first assistant response after system message, 
+                        // we can't create a branch (no user message to branch from)
                       }
                     }
                   }}
