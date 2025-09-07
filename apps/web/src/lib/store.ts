@@ -6,12 +6,25 @@ export interface Message {
   content: string;
   reasoning?: string;
   timestamp: Date;
+  branchPoint?: boolean; // Marks where a branch was created
+  mood?: 'neutral' | 'happy' | 'serious' | 'creative' | 'analytical' | 'emotional';
+}
+
+export interface ConversationBranch {
+  id: string;
+  parentBranchId?: string;
+  branchPointMessageId?: string;
+  messages: Message[];
+  title: string;
+  mood?: string; // Overall branch mood
 }
 
 export interface Conversation {
   id: string;
   title: string;
   messages: Message[];
+  branches?: ConversationBranch[];
+  currentBranchId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +64,9 @@ interface AppState {
   setContextSize: (size: number) => void;
   clearCurrentConversation: () => void;
   setReasoningMode: (mode: 'low' | 'medium' | 'high') => void;
+  createBranch: (fromMessageId: string) => void;
+  switchBranch: (branchId: string) => void;
+  getCurrentMood: () => 'neutral' | 'happy' | 'serious' | 'creative' | 'analytical' | 'emotional';
 }
 
 const DEFAULT_SYSTEM_MESSAGE = "You are a helpful AI assistant. Respond directly and concisely to user queries.";
@@ -186,5 +202,87 @@ export const useStore = create<AppState>((set) => ({
   
   setReasoningMode: (reasoningMode: 'low' | 'medium' | 'high') => {
     set({ reasoningMode });
+  },
+  
+  createBranch: (fromMessageId: string) => {
+    set((state) => {
+      const conversations = state.conversations.map((conv) => {
+        if (conv.id === state.currentConversationId) {
+          const messageIndex = conv.messages.findIndex(m => m.id === fromMessageId);
+          if (messageIndex === -1) return conv;
+          
+          // Create a new branch with messages up to and including the assistant's response after the branch point
+          const branchId = `branch-${Date.now()}`;
+          // Include the message after the user message (which should be the assistant's response)
+          const endIndex = messageIndex + 2; // Include user message + assistant response
+          const branchMessages = conv.messages.slice(0, Math.min(endIndex, conv.messages.length)).map(m => ({ ...m }));
+          
+          // Mark the branch point
+          if (branchMessages[messageIndex]) {
+            branchMessages[messageIndex] = {
+              ...branchMessages[messageIndex],
+              branchPoint: true
+            };
+          }
+          
+          const newBranch: ConversationBranch = {
+            id: branchId,
+            parentBranchId: conv.currentBranchId || 'main',
+            branchPointMessageId: fromMessageId,
+            messages: branchMessages,
+            title: `Branch from "${branchMessages[messageIndex]?.content.slice(0, 30) || 'message'}..."`,
+            mood: conv.messages[messageIndex]?.mood
+          };
+          
+          const branches = [...(conv.branches || []), newBranch];
+          
+          return {
+            ...conv,
+            branches,
+            currentBranchId: branchId,
+            messages: branchMessages
+          };
+        }
+        return conv;
+      });
+      
+      return { conversations };
+    });
+  },
+  
+  switchBranch: (branchId: string) => {
+    set((state) => {
+      const conversations = state.conversations.map((conv) => {
+        if (conv.id === state.currentConversationId) {
+          if (branchId === 'main') {
+            // Switch to main timeline
+            const mainMessages = conv.branches?.[0]?.messages || conv.messages;
+            return {
+              ...conv,
+              currentBranchId: undefined,
+              messages: mainMessages
+            };
+          } else {
+            // Switch to a specific branch
+            const branch = conv.branches?.find(b => b.id === branchId);
+            if (!branch) return conv;
+            
+            return {
+              ...conv,
+              currentBranchId: branchId,
+              messages: branch.messages
+            };
+          }
+        }
+        return conv;
+      });
+      
+      return { conversations };
+    });
+  },
+  
+  getCurrentMood: () => {
+    // TODO: Implement mood detection based on conversation
+    return 'neutral' as const;
   },
 }));

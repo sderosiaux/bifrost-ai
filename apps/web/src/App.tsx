@@ -47,11 +47,11 @@ function App() {
   const showPrepareView = !modelStatus?.present;
   
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-950">
+    <div className="flex h-screen bg-white dark:bg-gray-950 overflow-hidden">
       <Sidebar />
       
-      <div className="flex-1 flex flex-col">
-        <header className="px-4 py-3 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="flex-shrink-0 px-4 py-3 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               GPT-OSS Chat

@@ -1,19 +1,19 @@
 import { HarmonyMessage } from './harmony.js';
 
-export class HarmonyValidationError extends Error {
+export class MessageValidationError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'HarmonyValidationError';
+    this.name = 'MessageValidationError';
   }
 }
 
-export function validateHarmonyMessages(messages: HarmonyMessage[]): void {
+export function validateMessageStructure(messages: HarmonyMessage[]): void {
   if (!Array.isArray(messages)) {
-    throw new HarmonyValidationError('Messages must be an array');
+    throw new MessageValidationError('Messages must be an array');
   }
   
   if (messages.length === 0) {
-    throw new HarmonyValidationError('Messages array cannot be empty');
+    throw new MessageValidationError('Messages array cannot be empty');
   }
   
   const validRoles = new Set(['system', 'user', 'assistant', 'tool']);
@@ -24,41 +24,41 @@ export function validateHarmonyMessages(messages: HarmonyMessage[]): void {
     const message = messages[i];
     
     if (!message || typeof message !== 'object') {
-      throw new HarmonyValidationError(`Message at index ${i} is not an object`);
+      throw new MessageValidationError(`Message at index ${i} is not an object`);
     }
     
     if (!message.role || !validRoles.has(message.role)) {
-      throw new HarmonyValidationError(
+      throw new MessageValidationError(
         `Message at index ${i} has invalid role: ${message.role}. Valid roles are: ${Array.from(validRoles).join(', ')}`
       );
     }
     
     if (typeof message.content !== 'string') {
-      throw new HarmonyValidationError(`Message at index ${i} has invalid content: must be a string`);
+      throw new MessageValidationError(`Message at index ${i} has invalid content: must be a string`);
     }
     
     if (message.content.length === 0) {
-      throw new HarmonyValidationError(`Message at index ${i} has empty content`);
+      throw new MessageValidationError(`Message at index ${i} has empty content`);
     }
     
     // System message rules
     if (message.role === 'system') {
       if (i !== 0) {
-        throw new HarmonyValidationError('System message must be the first message if present');
+        throw new MessageValidationError('System message must be the first message if present');
       }
       hasSystemMessage = true;
     }
     
     // Check for consecutive same roles (except system at start)
     if (lastRole === message.role && message.role !== 'system') {
-      throw new HarmonyValidationError(
+      throw new MessageValidationError(
         `Consecutive ${message.role} messages at index ${i}. Messages should alternate between roles.`
       );
     }
     
     // Tool messages must follow assistant messages with function calls
     if (message.role === 'tool' && lastRole !== 'assistant') {
-      throw new HarmonyValidationError(
+      throw new MessageValidationError(
         `Tool message at index ${i} must follow an assistant message with function calls`
       );
     }

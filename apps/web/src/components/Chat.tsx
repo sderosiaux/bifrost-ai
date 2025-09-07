@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useStore } from "../lib/store";
 import { streamChat, stopChat } from "../lib/api";
 import { Message } from "./Message";
+import { getConversationMood, moodConfigs } from "../lib/moodAnalyzer";
+import { soundManager } from "../lib/soundEffects";
 
 // Parser pour extraire les canaux Harmony
 function parseHarmonyChannels(text: string): Record<string, string> {
@@ -77,9 +79,11 @@ export function Chat() {
     updateLastMessage,
     reasoningMode,
     setReasoningMode,
+    createBranch,
   } = useStore();
 
   const [input, setInput] = useState("");
+  const [currentMood, setCurrentMood] = useState<keyof typeof moodConfigs>('neutral');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -88,6 +92,20 @@ export function Chat() {
     (c) => c.id === currentConversationId,
   );
   const messages = currentConversation?.messages || [];
+  
+  // Detect mood from conversation
+  useEffect(() => {
+    if (messages.length > 0) {
+      const mood = getConversationMood(messages);
+      if (mood !== currentMood) {
+        setCurrentMood(mood);
+        // Play sound effect for mood change
+        if (mood !== 'neutral') {
+          soundManager.playMoodSound(mood);
+        }
+      }
+    }
+  }, [messages, currentMood]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -274,18 +292,40 @@ export function Chat() {
     }
   };
 
+  const moodConfig = moodConfigs[currentMood];
+  
   return (
-    <div className="flex-1 flex flex-col">
-      <div className="flex-1 overflow-y-auto p-4">
+    <div className={`flex-1 flex flex-col min-h-0 transition-all duration-1000 ${moodConfig.backgroundColor}`}>
+      {/* Mood indicator */}
+      {currentMood !== 'neutral' && (
+        <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-medium ${moodConfig.primaryColor} text-white ${moodConfig.animation} z-10`}>
+          {currentMood}
+        </div>
+      )}
+      
+      <div className="flex-1 overflow-y-auto p-4 min-h-0">
         {messages
           .filter((m) => m.role !== "system")
-          .map((message) => (
-            <Message key={message.id} message={message} />
-          ))}
+          .map((message, index, filteredMessages) => {
+            const isLatestAssistant = 
+              message.role === 'assistant' && 
+              index === filteredMessages.length - 1;
+            
+            return (
+              <Message 
+                key={message.id} 
+                message={message} 
+                onBranch={createBranch}
+                isLatestAssistant={isLatestAssistant}
+              />
+            );
+          })}
         <div ref={messagesEndRef} />
       </div>
-
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+      
+      <div className={`p-4 border-t transition-colors duration-500 ${moodConfig.borderGlow} ${
+        currentMood === 'neutral' ? 'border-gray-200 dark:border-gray-800' : 'border-opacity-50'
+      }`}>
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <label className="text-sm text-gray-600 dark:text-gray-400">

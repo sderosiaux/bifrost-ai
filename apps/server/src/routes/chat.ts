@@ -2,9 +2,9 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { llamaBinding, SamplerParams } from "../lib/llamaBinding.js";
 import { HarmonyMessage, parseAssistantResponse } from "../lib/harmony.js";
 import {
-  validateHarmonyMessages,
-  HarmonyValidationError,
-} from "../lib/validateHarmony.js";
+  validateMessageStructure,
+  MessageValidationError,
+} from "../lib/validateMessages.js";
 import { validateMessages, validateSamplerParams } from "../lib/validation.js";
 import { modelStore } from "../lib/modelStore.js";
 import { warmupModel } from "../lib/warmup.js";
@@ -38,7 +38,7 @@ export async function chatRoutes(fastify: FastifyInstance) {
 
       try {
         validatedMessages = validateMessages(request.body.messages);
-        validateHarmonyMessages(validatedMessages);
+        validateMessageStructure(validatedMessages);
         validatedParams = validateSamplerParams(request.body.params);
         logger.debug("[Chat] Validation passed");
       } catch (error: any) {

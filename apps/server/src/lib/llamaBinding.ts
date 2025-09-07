@@ -137,8 +137,8 @@ class LlamaBinding {
         let newText = fullText.substring(previousText.length);
 
         logger.model(
-          "[LlamaBinding] Full text so far:",
-          JSON.stringify(fullText.substring(0, 100)),
+          "[LlamaBinding] Full text so far (last 200 chars):",
+          JSON.stringify(fullText.slice(-200)),
         );
         logger.model(
           "[LlamaBinding] New text:",

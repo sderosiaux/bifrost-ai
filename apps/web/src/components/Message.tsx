@@ -1,13 +1,15 @@
 import { useState, memo } from 'react';
-import { Message as MessageType } from '../lib/store';
+import { Message as MessageType, useStore } from '../lib/store';
 import ReactMarkdown from 'react-markdown';
 
 interface MessageProps {
   message: MessageType;
+  onBranch?: (messageId: string) => void;
+  isLatestAssistant?: boolean;
 }
 
-export const Message = memo(function Message({ message }: MessageProps) {
-  const [showCopy, setShowCopy] = useState(false);
+export const Message = memo(function Message({ message, onBranch, isLatestAssistant }: MessageProps) {
+  const [showActions, setShowActions] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
   
@@ -24,8 +26,8 @@ export const Message = memo(function Message({ message }: MessageProps) {
   };
   
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div className="max-w-3xl">
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 group`}>
+      <div className="max-w-3xl relative">
         {/* Reasoning toggle (only for assistant messages with reasoning) */}
         {!isUser && hasReasoning && (
           <button
@@ -66,29 +68,58 @@ export const Message = memo(function Message({ message }: MessageProps) {
               ? 'bg-primary-600 text-white'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
           }`}
-          onMouseEnter={() => !isUser && setShowCopy(true)}
-          onMouseLeave={() => !isUser && setShowCopy(false)}
+          onMouseEnter={() => !isUser && setShowActions(true)}
+          onMouseLeave={() => !isUser && setShowActions(false)}
         >
           <div className="prose prose-sm max-w-none dark:prose-invert">
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
           
-          {!isUser && showCopy && (
-            <button
-              onClick={handleCopy}
-              className="absolute top-2 right-2 p-1.5 rounded-md bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              title="Copy message"
-            >
-              {copied ? (
-                <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
+          {!isUser && showActions && (
+            <div className="absolute top-2 right-2 flex gap-1">
+              {/* Fork button */}
+              {onBranch && !isLatestAssistant && (
+                <button
+                  onClick={() => {
+                    // Find the user message that preceded this assistant message
+                    const messages = useStore.getState().conversations
+                      .find(c => c.id === useStore.getState().currentConversationId)
+                      ?.messages.filter(m => m.role !== 'system');
+                    
+                    if (messages) {
+                      const messageIndex = messages.findIndex(m => m.id === message.id);
+                      if (messageIndex > 0 && messages[messageIndex - 1].role === 'user') {
+                        onBranch(messages[messageIndex - 1].id);
+                      }
+                    }
+                  }}
+                  className="p-1.5 rounded-md bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                  title="Create branch from here"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                </button>
               )}
-            </button>
+              
+              {/* Copy button */}
+              <button
+                onClick={handleCopy}
+                className="p-1.5 rounded-md bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                title="Copy message"
+              >
+                {copied ? (
+                  <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+              </button>
+            </div>
           )}
         </div>
       </div>
