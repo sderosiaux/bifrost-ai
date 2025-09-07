@@ -23,6 +23,7 @@ export interface Conversation {
   id: string;
   title: string;
   messages: Message[];
+  mainMessages?: Message[]; // Store original timeline
   branches?: ConversationBranch[];
   currentBranchId?: string;
   createdAt: Date;
@@ -211,6 +212,9 @@ export const useStore = create<AppState>((set) => ({
           const messageIndex = conv.messages.findIndex(m => m.id === fromMessageId);
           if (messageIndex === -1) return conv;
           
+          // Save main messages if this is the first branch
+          const mainMessages = conv.mainMessages || conv.messages;
+          
           // Create a new branch with messages up to and including the assistant's response after the branch point
           const branchId = `branch-${Date.now()}`;
           // Include the message after the user message (which should be the assistant's response)
@@ -238,6 +242,7 @@ export const useStore = create<AppState>((set) => ({
           
           return {
             ...conv,
+            mainMessages, // Store original timeline
             branches,
             currentBranchId: branchId,
             messages: branchMessages
@@ -255,20 +260,24 @@ export const useStore = create<AppState>((set) => ({
       const conversations = state.conversations.map((conv) => {
         if (conv.id === state.currentConversationId) {
           if (branchId === 'main') {
-            // Switch to main timeline
-            const mainMessages = conv.branches?.[0]?.messages || conv.messages;
+            // Switch to main timeline - use stored mainMessages or current if no branches
+            const mainMessages = conv.mainMessages || conv.messages;
             return {
               ...conv,
               currentBranchId: undefined,
               messages: mainMessages
             };
           } else {
+            // Save main messages if switching from main to branch for first time
+            const mainMessages = conv.mainMessages || (!conv.currentBranchId ? conv.messages : conv.mainMessages);
+            
             // Switch to a specific branch
             const branch = conv.branches?.find(b => b.id === branchId);
             if (!branch) return conv;
             
             return {
               ...conv,
+              mainMessages, // Keep original timeline
               currentBranchId: branchId,
               messages: branch.messages
             };

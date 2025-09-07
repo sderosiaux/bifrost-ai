@@ -54,7 +54,7 @@ function App() {
         <header className="flex-shrink-0 px-4 py-3 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between">
             <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              GPT-OSS Chat
+              🌈 Bifrost AI
             </h1>
             <div className="px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
               Local
